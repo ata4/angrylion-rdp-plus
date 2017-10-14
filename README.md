@@ -31,7 +31,7 @@ Building with CMake is also possible, but currently supports the mupen64plus plu
 
 ### WIP builds
 
-WIP builds can be found [here](https://github.com/ata4/angrylion-rdp-plus/issues/29) for those who don't want to or can't compile the project on your own.
+WIP builds can be found [here](https://github.com/ata4/angrylion-rdp-plus/issues/29) for those who don't want to or can't compile the project on their own.
 
 WIP builds have the latest features and fixes, and are generally stable, but may introduce bugs.
 
