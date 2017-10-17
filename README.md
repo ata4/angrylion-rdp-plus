@@ -29,6 +29,14 @@ The glLoadGen files (`gl_core_3_3` and `wgl_ext`) were generated using the follo
 
 Building with CMake is also possible, but currently supports the mupen64plus plugin and the retracer only.
 
+### WIP builds
+
+WIP builds can be found [here](https://github.com/ata4/angrylion-rdp-plus/issues/29) for those who don't want to or can't compile the project on their own.
+
+WIP builds have the latest features and fixes, and are generally stable, but may introduce bugs.
+
+They are compatible with Project64 1.7 and the newer 2.x versions.
+
 ### Credits
 * Angrylion, Ville Linde, MooglyGuy and others involved for creating an awesome N64 RDP reference software.
 * theboy181 - Testing. Lots of testing.
