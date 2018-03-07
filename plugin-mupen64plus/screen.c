@@ -2,7 +2,6 @@
 #include "gfx_m64p.h"
 
 #include "plugin-common/gl_screen.h"
-#include "plugin-common/gl_core_3_3.h"
 
 #include "core/msg.h"
 
@@ -45,9 +44,15 @@ void screen_init(struct rdp_config* config)
 
     CoreVideo_Init();
 
+#ifndef GLES
     CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_PROFILE_MASK, M64P_GL_CONTEXT_PROFILE_CORE);
     CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MAJOR_VERSION, 3);
     CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MINOR_VERSION, 3);
+#else
+    CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_PROFILE_MASK, M64P_GL_CONTEXT_PROFILE_ES);
+    CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MAJOR_VERSION, 3);
+    CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MINOR_VERSION, 0);
+#endif
 
     CoreVideo_SetVideoMode(window_width, window_height, 0, window_fullscreen ? M64VIDEO_FULLSCREEN : M64VIDEO_WINDOWED, M64VIDEOFLAG_SUPPORT_RESIZING);
 
@@ -62,7 +67,7 @@ void screen_swap(bool blank)
     }
 
     // clear current buffer, indicating the start of a new frame
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    gl_screen_clear();
 
     if (!blank) {
         gl_screen_render(window_width, window_height, 0, 0);

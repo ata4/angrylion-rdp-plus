@@ -227,6 +227,11 @@ void gl_screen_render(int32_t win_width, int32_t win_height, int32_t win_x, int3
     gl_check_errors();
 }
 
+void gl_screen_clear(void)
+{
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
 void gl_screen_close(void)
 {
     tex_width = 0;
