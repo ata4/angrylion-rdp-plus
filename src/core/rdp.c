@@ -505,7 +505,7 @@ void rdp_init(struct rdp_config* _config)
     memset(&onetimewarnings, 0, sizeof(onetimewarnings));
 
     if (config.parallel) {
-        parallel_alinit(config.num_workers);
+        parallel_init(config.num_workers);
         rdp_states = malloc(parallel_num_workers() * sizeof(struct rdp_state));
         parallel_run(rdp_init_worker);
     } else {
