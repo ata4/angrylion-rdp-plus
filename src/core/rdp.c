@@ -453,6 +453,7 @@ void rdp_config_defaults(struct rdp_config* config)
 
 void rdp_init_worker(uint32_t worker_id)
 {
+   int i;
     struct rdp_state* rdp = &rdp_states[worker_id];
     memset(rdp, 0, sizeof(*rdp));
 
@@ -462,7 +463,7 @@ void rdp_init_worker(uint32_t worker_id)
     uint32_t tmp[2] = {0};
     rdp_set_other_modes(rdp, tmp);
 
-    for (int i = 0; i < 8; i++)
+    for (i = 0; i < 8; i++)
     {
         calculate_tile_derivs(&rdp->tile[i]);
         calculate_clamp_diffs(&rdp->tile[i]);
@@ -504,7 +505,7 @@ void rdp_init(struct rdp_config* _config)
     memset(&onetimewarnings, 0, sizeof(onetimewarnings));
 
     if (config.parallel) {
-        parallel_init(config.num_workers);
+        parallel_alinit(config.num_workers);
         rdp_states = malloc(parallel_num_workers() * sizeof(struct rdp_state));
         parallel_run(rdp_init_worker);
     } else {
