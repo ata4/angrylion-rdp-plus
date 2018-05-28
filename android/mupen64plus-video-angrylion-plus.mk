@@ -3,10 +3,9 @@
 ######################
 include $(CLEAR_VARS)
 LOCAL_PATH := $(JNI_LOCAL_PATH)
-SRCDIR := ./$(BASE_DIR)/../src
+SRCDIR := ./$(BASE_DIR)/src
 
 MY_LOCAL_CFLAGS := $(COMMON_CFLAGS) -Wno-bitwise-op-parentheses -DM64P_PLUGIN_API -DGLES
-#MY_LOCAL_CFLAGS := $(COMMON_CFLAGS) -Wno-bitwise-op-parentheses -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES
 
 LOCAL_MODULE := mupen64plus-video-angrylion-rdp-plus
 LOCAL_ARM_MODE := arm
