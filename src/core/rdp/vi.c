@@ -527,6 +527,10 @@ static void vi_process_end(void)
     struct rdp_frame_buffer fb;
     fb.pixels = prescale;
     fb.pitch = PRESCALE_WIDTH;
+    
+    struct rdp_frame_buffer db;
+    db.pixels = prescale;
+    db.pitch = PRESCALE_WIDTH;
 
     int32_t output_height;
 
@@ -544,12 +548,27 @@ static void vi_process_end(void)
         fb.height = (ispal ? V_RES_PAL : V_RES_NTSC) >> !ctrl.serrate;
         output_height = V_RES_NTSC;
     }
+    
+    if (config.vi.hide_overscan) {
+        // crop away overscan area from prescale
+        db.width = maxhpass - minhpass;
+        db.height = vres << ctrl.serrate;
+        output_height = (vres << 1) * V_SYNC_NTSC / v_sync;
+        int32_t x = h_start + minhpass;
+        int32_t y = (v_start + (emucontrolsvicurrent ? lowerfield : 0)) << ctrl.serrate;
+        db.pixels += x + y * db.pitch;
+    } else {
+        // use entire prescale buffer
+        db.width = PRESCALE_WIDTH;
+        db.height = (ispal ? V_RES_PAL : V_RES_NTSC) >> !ctrl.serrate;
+        output_height = V_RES_NTSC;
+    }
 
     if (config.vi.widescreen) {
         output_height = output_height * 3 / 4;
     }
 
-    screen_write(&fb, output_height);
+    screen_write(&fb, output_height, &db);
 }
 
 static bool vi_process_start_fast(void)
@@ -656,6 +675,12 @@ static void vi_process_end_fast(void)
     fb.width = hres_raw;
     fb.height = vres_raw;
     fb.pitch = hres_raw;
+    
+    struct rdp_frame_buffer db;
+    db.pixels = prescale;
+    db.width = hres_raw;
+    db.height = vres_raw;
+    db.pitch = hres_raw;
 
     int32_t filtered_height = (vres << 1) * V_SYNC_NTSC / v_sync;
     int32_t output_height = hres_raw * filtered_height / hres;
@@ -664,7 +689,7 @@ static void vi_process_end_fast(void)
         output_height = output_height * 3 / 4;
     }
 
-    screen_write(&fb, output_height);
+    screen_write(&fb, output_height, &db);
 }
 
 void rdp_update_vi(void)
