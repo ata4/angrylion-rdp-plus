@@ -19,7 +19,7 @@
 static GLuint program;
 static GLuint vao;
 static GLuint texture;
-static GLuint depth_texture = ;
+static GLuint depth_texture;
 
 static int32_t tex_width;
 static int32_t tex_height;
