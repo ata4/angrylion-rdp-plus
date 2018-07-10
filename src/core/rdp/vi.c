@@ -630,8 +630,7 @@ static void vi_process_fast(uint32_t worker_id)
                     break;
 
                 case VI_MODE_DEPTH: {
-                    r = g = b = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
-                    zrgb = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
+                    r = g = b = zrgb = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
                     break;
                 }
 
