@@ -204,7 +204,7 @@ bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
 	glEnable(GL_DEPTH_TEST);
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, depth_texture);
-	msg_debug("%s: attempted to attribute depth: %d", __FUNCTION__, fb->depth);
+
 
 	// set pitch for all unpacking operations
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, fb->pitch);
