@@ -187,6 +187,7 @@ bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
 
     // write the depth to the depthbuffer
     glBindTexture(GL_TEXTURE_2D, depth_texture);
+    msg_debug("%s: attempted to attribute depth: %d", __FUNCTION__, fb->depth);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, fb->width, fb->height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, fb->depth);
     
     // switch back to the default texture
