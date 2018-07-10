@@ -19,7 +19,7 @@
 static GLuint program;
 static GLuint vao;
 static GLuint texture;
-static GLuint depth_texture;
+static GLuint depth_texture = ;
 
 static int32_t tex_width;
 static int32_t tex_height;
@@ -138,12 +138,14 @@ void gl_screen_init(struct rdp_config* config)
         "in vec2 uv;\n"
         "layout(location = 0) out vec4 color;\n"
         "uniform sampler2D tex0;\n"
+        "uniform sampler2D tex1;\n"
         "void main(void) {\n"
 #ifdef GLES
         "    color = texture(tex0, uv);\n"
 #else
         "    color.bgra = texture(tex0, uv);\n"
 #endif
+        "    gl_FragDepth = texture(tex1, uv);\n"
         "}\n";
 
     // compile and link OpenGL program
@@ -157,10 +159,12 @@ void gl_screen_init(struct rdp_config* config)
     glBindVertexArray(vao);
 
     // prepare depth texture
+    glActiveTexture(GL_TEXTURE1);
     glGenTextures(1, &depth_texture);
     glBindTexture(GL_TEXTURE_2D, depth_texture);
     
     // prepare texture
+    glActiveTexture(GL_TEXTURE0);
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
 
@@ -186,11 +190,13 @@ bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
     bool buffer_size_changed = tex_width != fb->width || tex_height != fb->height;
 
     // write the depth to the depthbuffer
+    glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, depth_texture);
     msg_debug("%s: attempted to attribute depth: %d", __FUNCTION__, fb->depth);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, fb->width, fb->height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, fb->depth);
     
     // switch back to the default texture
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
     
     // check if the framebuffer size has changed
