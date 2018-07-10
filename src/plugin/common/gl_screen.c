@@ -194,22 +194,25 @@ bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
         tex_width = fb->width;
         tex_height = fb->height;
 
-		// write the depth to the depthbuffer
-		glEnable(GL_DEPTH_TEST);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, depth_texture);
-		msg_debug("%s: attempted to attribute depth: %d", __FUNCTION__, fb->depth);
+	// write the depth to the depthbuffer
+	glDepthMask(GL_TRUE);
+	glEnable(GL_DEPTH_TEST);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, depth_texture);
+	msg_debug("%s: attempted to attribute depth: %d", __FUNCTION__, fb->depth);
 
-		// set pitch for all unpacking operations
-		glPixelStorei(GL_UNPACK_ROW_LENGTH, fb->pitch);
+	// set pitch for all unpacking operations
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, fb->pitch);
 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, fb->width, fb->height, 0, GL_DEPTH_COMPONENT, TEX_TYPE, fb->depth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, fb->width, fb->height, 0, GL_DEPTH_COMPONENT, TEX_TYPE, fb->depth);
 
-		// switch back to the default texture
-		glDisable(GL_DEPTH_TEST);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texture);
+	// switch back to the default texture
+	glDisable(GL_DEPTH_TEST);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texture);
 
+	glDepthMask(GL_FALSE);
+	    
         // set pitch for all unpacking operations
         glPixelStorei(GL_UNPACK_ROW_LENGTH, fb->pitch);
 
