@@ -199,6 +199,7 @@ bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
         tex_width = fb->width;
         tex_height = fb->height;
 
+
 	// write the depth to the depthbuffer
 	glDepthMask(GL_TRUE);
 	glEnable(GL_DEPTH_TEST);
