@@ -145,7 +145,7 @@ void gl_screen_init(struct rdp_config* config)
 #else
         "    color.bgra = texture(tex0, uv);\n"
 #endif
-        "    gl_FragDepth = texture(tex1, uv);\n"
+        "    gl_FragDepth = texture(tex1, uv).r;\n"
         "}\n";
 
     // compile and link OpenGL program
@@ -188,23 +188,27 @@ void gl_screen_init(struct rdp_config* config)
 bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
 {
     bool buffer_size_changed = tex_width != fb->width || tex_height != fb->height;
-
-    // write the depth to the depthbuffer
-    glEnable(GL_DEPTH_TEST);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, depth_texture);
-    msg_debug("%s: attempted to attribute depth: %d", __FUNCTION__, fb->depth);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, fb->width, fb->height, 0, GL_DEPTH_COMPONENT, TEX_TYPE, fb->depth);
-   
-    // switch back to the default texture
-    glDisable(GL_DEPTH_TEST);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
     
     // check if the framebuffer size has changed
     if (buffer_size_changed) {
         tex_width = fb->width;
         tex_height = fb->height;
+
+		// write the depth to the depthbuffer
+		glEnable(GL_DEPTH_TEST);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, depth_texture);
+		msg_debug("%s: attempted to attribute depth: %d", __FUNCTION__, fb->depth);
+
+		// set pitch for all unpacking operations
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, fb->pitch);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, fb->width, fb->height, 0, GL_DEPTH_COMPONENT, TEX_TYPE, fb->depth);
+
+		// switch back to the default texture
+		glDisable(GL_DEPTH_TEST);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture);
 
         // set pitch for all unpacking operations
         glPixelStorei(GL_UNPACK_ROW_LENGTH, fb->pitch);
@@ -214,6 +218,7 @@ bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
 
         msg_debug("%s: resized framebuffer texture: %dx%d", __FUNCTION__, tex_width, tex_height);
     } else {
+
         // copy local buffer to GPU texture buffer
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width, tex_height,
             TEX_FORMAT, TEX_TYPE, fb->pixels);
