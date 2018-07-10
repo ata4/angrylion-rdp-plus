@@ -116,7 +116,7 @@ static void vi_init(void)
     vi_restore_init();
 
     memset(prescale, 0, sizeof(prescale));
-    memset(prescale_depth, 0, sizeof(prescale_depth))
+	memset(prescale_depth, 0, sizeof(prescale_depth));
 
     prevvicurrent = 0;
     emucontrolsvicurrent = -1;
