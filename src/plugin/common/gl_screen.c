@@ -19,6 +19,7 @@
 static GLuint program;
 static GLuint vao;
 static GLuint texture;
+static GLuint depth_texture;
 
 static int32_t tex_width;
 static int32_t tex_height;
@@ -155,6 +156,10 @@ void gl_screen_init(struct rdp_config* config)
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
+    // prepare depth texture
+    glGenTextures(1, &depth_texture);
+    glBindTexture(GL_TEXTURE_2D, depth_texture);
+    
     // prepare texture
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -176,10 +181,15 @@ void gl_screen_init(struct rdp_config* config)
     gl_check_errors();
 }
 
-bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
+bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height, struct rdp_frame_buffer* depth)
 {
     bool buffer_size_changed = tex_width != fb->width || tex_height != fb->height;
 
+    // write the depth to the depthbuffer
+    glBindTexture(GL_TEXTURE_2D, depth_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, depth->width, depth->height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, depth->pixels)
+    glBindTexture(GL_TEXTURE_2D, 0);
+    
     // check if the framebuffer size has changed
     if (buffer_size_changed) {
         tex_width = fb->width;
