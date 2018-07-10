@@ -204,7 +204,6 @@ bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
 	glEnable(GL_DEPTH_TEST);
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, depth_texture);
-	msg_debug("%s: attempted to attribute depth: %d", __FUNCTION__, fb->depth);
 
 	// set pitch for all unpacking operations
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, fb->pitch);
@@ -227,9 +226,25 @@ bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
         msg_debug("%s: resized framebuffer texture: %dx%d", __FUNCTION__, tex_width, tex_height);
     } else {
 
+
+		// write the depth to the depthbuffer
+		glDepthMask(GL_TRUE);
+		glEnable(GL_DEPTH_TEST);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, depth_texture);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width, tex_height,
+			GL_DEPTH_COMPONENT, TEX_TYPE, fb->depth);
+		// switch back to the default texture
+		glDisable(GL_DEPTH_TEST);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture);
+
+
         // copy local buffer to GPU texture buffer
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width, tex_height,
             TEX_FORMAT, TEX_TYPE, fb->pixels);
+
+		
     }
 
     // update output size
