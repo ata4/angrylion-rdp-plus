@@ -84,6 +84,7 @@ static uint32_t tvfadeoutstate[PRESCALE_HEIGHT];
 
 // prescale buffer
 static uint32_t prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
+static uint32_t prescale_depth[PRESCALE_WIDTH * PRESCALE_HEIGHT];
 static uint32_t prescale_ptr;
 static int32_t linecount;
 
@@ -115,6 +116,7 @@ static void vi_init(void)
     vi_restore_init();
 
     memset(prescale, 0, sizeof(prescale));
+    memset(prescale_depth, 0, sizeof(prescale_depth))
 
     prevvicurrent = 0;
     emucontrolsvicurrent = -1;
@@ -527,10 +529,7 @@ static void vi_process_end(void)
     struct rdp_frame_buffer fb;
     fb.pixels = prescale;
     fb.pitch = PRESCALE_WIDTH;
-    
-    struct rdp_frame_buffer db;
-    db.pixels = prescale;
-    db.pitch = PRESCALE_WIDTH;
+    fb.depth = prescale_depth;
 
     int32_t output_height;
 
@@ -549,26 +548,11 @@ static void vi_process_end(void)
         output_height = V_RES_NTSC;
     }
     
-    if (config.vi.hide_overscan) {
-        // crop away overscan area from prescale
-        db.width = maxhpass - minhpass;
-        db.height = vres << ctrl.serrate;
-        output_height = (vres << 1) * V_SYNC_NTSC / v_sync;
-        int32_t x = h_start + minhpass;
-        int32_t y = (v_start + (emucontrolsvicurrent ? lowerfield : 0)) << ctrl.serrate;
-        db.pixels += x + y * db.pitch;
-    } else {
-        // use entire prescale buffer
-        db.width = PRESCALE_WIDTH;
-        db.height = (ispal ? V_RES_PAL : V_RES_NTSC) >> !ctrl.serrate;
-        output_height = V_RES_NTSC;
-    }
-
     if (config.vi.widescreen) {
         output_height = output_height * 3 / 4;
     }
 
-    screen_write(&fb, output_height, &db);
+    screen_write(&fb, output_height);
 }
 
 static bool vi_process_start_fast(void)
@@ -614,7 +598,7 @@ static void vi_process_fast(uint32_t worker_id)
     for (y = y_begin; y < y_end; y += y_inc) {
         int32_t x;
         int32_t line = y * vi_width_low;
-        uint32_t* dst = prescale + y * hres_raw;
+        uint32_t* d = dst = prescale + y * hres_raw;
 
         for (x = 0; x < hres_raw; x++) {
             uint32_t r, g, b, zrgb;
@@ -668,6 +652,7 @@ static void vi_process_fast(uint32_t worker_id)
             gamma_filters(&r, &g, &b, ctrl, &rdp_states[worker_id].rand_vi);
 
             dst[x] = (b << 16) | (g << 8) | r;
+            d[x] = (zrgb << 16) | (zrgb << 8) | zrgb;
         }
     }
 }
@@ -679,12 +664,7 @@ static void vi_process_end_fast(void)
     fb.width = hres_raw;
     fb.height = vres_raw;
     fb.pitch = hres_raw;
-    
-    struct rdp_frame_buffer db;
-    db.pixels = prescale;
-    db.width = hres_raw;
-    db.height = vres_raw;
-    db.pitch = hres_raw;
+    fb.depth = prescale_depth;
 
     int32_t filtered_height = (vres << 1) * V_SYNC_NTSC / v_sync;
     int32_t output_height = hres_raw * filtered_height / hres;
@@ -693,7 +673,7 @@ static void vi_process_end_fast(void)
         output_height = output_height * 3 / 4;
     }
 
-    screen_write(&fb, output_height, &db);
+    screen_write(&fb, output_height);
 }
 
 void rdp_update_vi(void)
