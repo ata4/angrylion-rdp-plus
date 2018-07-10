@@ -617,7 +617,7 @@ static void vi_process_fast(uint32_t worker_id)
         uint32_t* dst = prescale + y * hres_raw;
 
         for (x = 0; x < hres_raw; x++) {
-            uint32_t r, g, b;
+            uint32_t r, g, b, zrgb;
 
             switch (config.vi.mode) {
                 case VI_MODE_COLOR:
@@ -627,6 +627,7 @@ static void vi_process_fast(uint32_t worker_id)
                             r = RGBA16_R(pix);
                             g = RGBA16_G(pix);
                             b = RGBA16_B(pix);
+                            zrgb = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
                             break;
                         }
 
@@ -635,6 +636,7 @@ static void vi_process_fast(uint32_t worker_id)
                             r = RGBA32_R(pix);
                             g = RGBA32_G(pix);
                             b = RGBA32_B(pix);
+                            zrgb = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
                             break;
                         }
 
@@ -645,6 +647,7 @@ static void vi_process_fast(uint32_t worker_id)
 
                 case VI_MODE_DEPTH: {
                     r = g = b = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
+                    zrgb = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
                     break;
                 }
 
@@ -654,6 +657,7 @@ static void vi_process_fast(uint32_t worker_id)
                     uint16_t pix;
                     rdram_read_pair16(&pix, &hval, (frame_buffer >> 1) + line + x);
                     r = g = b = (((pix & 1) << 2) | hval) << 5;
+                    zrgb = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
                     break;
                 }
 
