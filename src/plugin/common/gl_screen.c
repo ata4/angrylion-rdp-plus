@@ -273,7 +273,9 @@ void gl_screen_render(int32_t win_width, int32_t win_height, int32_t win_x, int3
     glViewport(win_x, win_y, win_width, win_height);
 
     // draw fullscreen triangle
+	glDepthMask(GL_FALSE);
     glDrawArrays(GL_TRIANGLES, 0, 3);
+	glDepthMask(GL_TRUE);
 
     // check if there was an error when using any of the commands above
     gl_check_errors();
