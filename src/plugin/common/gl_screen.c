@@ -181,13 +181,13 @@ void gl_screen_init(struct rdp_config* config)
     gl_check_errors();
 }
 
-bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height, struct rdp_frame_buffer* depth)
+bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
 {
     bool buffer_size_changed = tex_width != fb->width || tex_height != fb->height;
 
     // write the depth to the depthbuffer
     glBindTexture(GL_TEXTURE_2D, depth_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, depth->width, depth->height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, depth->pixels)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, fb->width, fb->height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, fb->depth)
     glBindTexture(GL_TEXTURE_2D, 0);
     
     // check if the framebuffer size has changed
