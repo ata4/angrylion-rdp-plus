@@ -139,13 +139,18 @@ void gl_screen_init(struct rdp_config* config)
         "layout(location = 0) out vec4 color;\n"
         "uniform sampler2D tex0;\n"
         "uniform sampler2D tex1;\n"
+    	"float UnpackDepth(in vec3 pack)\n"
+	"{\n"
+		"float depth = dot( pack, 1.0 / vec3(1.0, 256.0, 256.0*256.0) );\n"
+	  	"return depth * (256.0*256.0*256.0) / (256.0*256.0*256.0 - 1.0);\n"
+	"}\n"
         "void main(void) {\n"
 #ifdef GLES
         "    color = texture(tex0, uv);\n"
 #else
         "    color.bgra = texture(tex0, uv);\n"
 #endif
-        "    gl_FragDepth = texture(tex1, uv).r;\n"
+        "    gl_FragDepth = UnpackDepth(texture(tex1, uv).rgb);\n"
         "}\n";
 
     // compile and link OpenGL program
@@ -203,7 +208,7 @@ bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
 
 	// set pitch for all unpacking operations
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, fb->pitch);
-
+	    
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, fb->width, fb->height, 0, GL_DEPTH_COMPONENT, TEX_TYPE, fb->depth);
 
 	// switch back to the default texture
