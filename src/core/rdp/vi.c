@@ -598,8 +598,9 @@ static void vi_process_fast(uint32_t worker_id)
     for (y = y_begin; y < y_end; y += y_inc) {
         int32_t x;
         int32_t line = y * vi_width_low;
-        uint32_t* d = dst = prescale + y * hres_raw;
-
+        uint32_t* dst = prescale + y * hres_raw;
+        uint32_t* d = prescale_depth + y * hres_raw;
+        
         for (x = 0; x < hres_raw; x++) {
             uint32_t r, g, b, zrgb;
 
