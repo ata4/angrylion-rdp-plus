@@ -21,6 +21,9 @@ static GLuint vao;
 static GLuint texture = 1;
 static GLuint depth_texture = 2;
 
+static GLint colorValueTextureLocation;
+static GLint depthValueTextureLocation;
+
 static int32_t tex_width;
 static int32_t tex_height;
 
@@ -137,8 +140,9 @@ void gl_screen_init(struct rdp_config* config)
         SHADER_HEADER
         "in vec2 uv;\n"
         "layout(location = 0) out vec4 color;\n"
-        "uniform sampler2D tex0;\n"
-        "uniform sampler2D tex1;\n"
+
+		"uniform sampler2D ColorValueTexture;\n"
+        "uniform sampler2D DepthValueTexture;\n"
 
 		"float unpack8BitVec3IntoFloat(vec3 v, float min, float max) {\n"
 			"float zeroTo24Bit = v.x + v.y * 256.0 + v.z * 256.0 * 256.0; \n"
@@ -154,51 +158,60 @@ void gl_screen_init(struct rdp_config* config)
 
         "void main(void) {\n"
 #ifdef GLES
-        "    color = texture(tex0, uv);\n"
+        "    color = texture(ColorValueTexture, uv);\n"
 #else
-        "    color.bgra = texture(tex0, uv);\n"
+        "    color.bgra = texture(ColorValueTexture, uv);\n"
 #endif
-		"    //gl_FragDepth = color2float(texture(tex1, uv).xyz);\n"
-		"    gl_FragDepth = texture(tex1, uv).z;\n"
+		"    //gl_FragDepth = color2float(texture(DepthValueTexture, uv).xyz);\n"
+		"    gl_FragDepth = texture(DepthValueTexture, uv).z;\n"
         "}\n";
 
     // compile and link OpenGL program
     GLuint vert = gl_shader_compile(GL_VERTEX_SHADER, vert_shader);
     GLuint frag = gl_shader_compile(GL_FRAGMENT_SHADER, frag_shader);
     program = gl_shader_link(vert, frag);
+
+	// get the uniform variables location
+	depthValueTextureLocation = glGetUniformLocation(program, "DepthValueTexture");
+	colorValueTextureLocation = glGetUniformLocation(program, "ColorValueTexture");
+
+	// specify the shader program to use
     glUseProgram(program);
 
-	// enable depth
-	glEnable(GL_DEPTH_TEST);
+	// bind the uniform variables locations
+	glUniform1i(depthValueTextureLocation, 0);
+	glUniform1i(colorValueTextureLocation, 1);
 
     // prepare dummy VAO
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
+	// select interpolation method
+	GLint filter;
+	switch (config->vi.interp) {
+	case VI_INTERP_LINEAR:
+		filter = GL_LINEAR;
+		break;
+	case VI_INTERP_NEAREST:
+	default:
+		filter = GL_NEAREST;
+	}
+
     // prepare depth texture
-    glActiveTexture(GL_TEXTURE1);
+	glActiveTexture(GL_TEXTURE0 + 0);
     glGenTextures(1, &depth_texture);
     glBindTexture(GL_TEXTURE_2D, depth_texture);
-    
-    // prepare texture
-    glActiveTexture(GL_TEXTURE0);
+	// configure interpolation method
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+
+    // prepare color texture
+	glActiveTexture(GL_TEXTURE0 + 1);
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-
-    // select interpolation method
-    GLint filter;
-    switch (config->vi.interp) {
-        case VI_INTERP_LINEAR:
-            filter = GL_LINEAR;
-            break;
-        case VI_INTERP_NEAREST:
-        default:
-            filter = GL_NEAREST;
-    }
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
-
-	glBindTexture(GL_TEXTURE_2D, 0);
+	// configure interpolation method
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
 
     // check if there was an error when using any of the commands above
     gl_check_errors();
@@ -213,63 +226,54 @@ bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
         tex_width = fb->width;
         tex_height = fb->height;
 
-		// switch back to the default texture
-		glActiveTexture(GL_TEXTURE0);
+		// select the color value binding
+		glActiveTexture(GL_TEXTURE0 + 1);
 		glBindTexture(GL_TEXTURE_2D, texture);
-		// disable depth
-		glDepthMask(GL_FALSE);
+
 		// set pitch for all unpacking operations
 		glPixelStorei(GL_UNPACK_ROW_LENGTH, fb->pitch);
-
         // reallocate texture buffer on GPU
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, TEX_FORMAT, TEX_TYPE, fb->depth);
+		glDepthMask(false);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, TEX_FORMAT, TEX_TYPE, fb->pixels);
+		glDepthMask(true);
 
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		//// write the depth to the depthbuffer
-		glActiveTexture(GL_TEXTURE1);
+		// select the depth value binding
+		glActiveTexture(GL_TEXTURE0 + 0);
 		glBindTexture(GL_TEXTURE_2D, depth_texture);
-		// enable depth
-		glDepthMask(GL_TRUE);
+
 		// set pitch for all unpacking operations
 		glPixelStorei(GL_UNPACK_ROW_LENGTH, fb->pitch);
+		// reallocate texture buffer on GPU
+		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+		glEnable(GL_DEPTH_TEST);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, TEX_FORMAT, TEX_TYPE, fb->depth);
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+		glDisable(GL_DEPTH_TEST);
 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, TEX_FORMAT, TEX_TYPE, fb->pixels);
-		//glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, tex_width, tex_height, 0, GL_DEPTH_COMPONENT, TEX_TYPE, fb->depth);
-
-		glBindTexture(GL_TEXTURE_2D, 0);
 
         msg_debug("%s: resized framebuffer texture: %dx%d", __FUNCTION__, tex_width, tex_height);
     } else {
-		// switch back to the default texture
-		glActiveTexture(GL_TEXTURE0);
+		// select the color value binding
+		glActiveTexture(GL_TEXTURE0 + 1);
 		glBindTexture(GL_TEXTURE_2D, texture);
-		// disable depth
-		glDepthMask(GL_FALSE);
 
         // copy local buffer to GPU texture buffer
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width, tex_height, TEX_FORMAT, TEX_TYPE, fb->depth);
-		
-		/*
-		 * Somehow this breaks rendering anything whatsoever?
-		 */
-		glBindTexture(GL_TEXTURE_2D, 0);
+		glDepthMask(false);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width, tex_height, TEX_FORMAT, TEX_TYPE, fb->pixels);
+		glDepthMask(true);
 
-		//// write the depth to the depthbuffer
-		glActiveTexture(GL_TEXTURE1);
+		// select the depth value binding
+		glActiveTexture(GL_TEXTURE0 + 0);
 		glBindTexture(GL_TEXTURE_2D, depth_texture);
-		// enable depth
-		glDepthMask(GL_TRUE);
 
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width, tex_height, TEX_FORMAT, TEX_TYPE, fb->pixels);
+		// copy local buffer to GPU texture buffer
+		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+		glEnable(GL_DEPTH_TEST);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width, tex_height, TEX_FORMAT, TEX_TYPE, fb->depth);
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+		glDisable(GL_DEPTH_TEST);
 
-		glBindTexture(GL_TEXTURE_2D, 0);
     }
-
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, depth_texture);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
 
     // update output size
     tex_display_height = output_height;
@@ -308,64 +312,26 @@ void gl_screen_render(int32_t win_width, int32_t win_height, int32_t win_x, int3
         win_height = h_max;
     }
 
-  
-
-	//// write the pixels
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, depth_texture);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	// disable depth
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	glDepthMask(GL_FALSE);
 	// configure viewport
 	glViewport(win_x, win_y, win_width, win_height);
-	//// draw to the depth to the depthbuffer
-	glDrawArrays(GL_TRIANGLES, 0, 3);
 
-	// unbind the textures
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, 0);
 
-	/*
-	 * This block writes the pixels to the depth buffer.
-	 */
-	////// write the depth
-	//glActiveTexture(GL_TEXTURE0);
-	//glBindTexture(GL_TEXTURE_2D, texture);
-	//glActiveTexture(GL_TEXTURE1);
-	//glBindTexture(GL_TEXTURE_2D, 0);
-	//// enable depth
-	//glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-	//glDepthMask(GL_TRUE);
-	//// configure viewport
-	//glViewport(win_x, win_y, win_width, win_height);
-	////// draw to the depth to the depthbuffer
-	//glDrawArrays(GL_TRIANGLES, 0, 3);
-
-	/*
-	* This block writes the depth to the depth buffer.
-	*/
-	// write the depth
-	glActiveTexture(GL_TEXTURE0);
+	// select the color value binding
+	glActiveTexture(GL_TEXTURE0 + 1);
 	glBindTexture(GL_TEXTURE_2D, texture);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, depth_texture);
-	// enable depth
-	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-	glDepthMask(GL_TRUE);
-	// configure viewport
-	glViewport(win_x, win_y, win_width, win_height);
-	// draw to the depth to the depthbuffer
+
+	// draw
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 
-	// unbind the textures
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	// select the depth value binding
+	glActiveTexture(GL_TEXTURE0 + 0);
+	glBindTexture(GL_TEXTURE_2D, depth_texture);
+
+	// draw
+	glEnable(GL_DEPTH_TEST);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+	glDisable(GL_DEPTH_TEST);
+
 
     // check if there was an error when using any of the commands above
     gl_check_errors();
@@ -373,19 +339,7 @@ void gl_screen_render(int32_t win_width, int32_t win_height, int32_t win_x, int3
 
 void gl_screen_clear(void)
 {
-	glDepthMask(GL_TRUE);
-	//glActiveTexture(GL_TEXTURE1);
-	//glBindTexture(GL_TEXTURE_2D, depth_texture);
-	//glActiveTexture(GL_TEXTURE0);
-	//glBindTexture(GL_TEXTURE_2D, texture);
-
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	//glActiveTexture(GL_TEXTURE1);
-	//glBindTexture(GL_TEXTURE_2D, 0);
-	//glActiveTexture(GL_TEXTURE0);
-	//glBindTexture(GL_TEXTURE_2D, 0);
-	glDepthMask(GL_FALSE);
 }
 
 void gl_screen_close(void)
