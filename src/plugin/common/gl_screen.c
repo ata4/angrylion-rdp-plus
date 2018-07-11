@@ -152,7 +152,7 @@ void gl_screen_init(struct rdp_config* config)
 #else
         "    color.bgra = texture(tex0, uv);\n"
 #endif
-		"    gl_FragDepth = unpack8BitVec3IntoFloat(texture(tex1, uv).rgb, 0.0, 1.0);\n"
+		"    gl_FragDepth = texture(tex1, uv).z;\n"
         "}\n";
 
     // compile and link OpenGL program
