@@ -606,7 +606,7 @@ static void vi_process_fast(uint32_t worker_id)
 
             switch (config.vi.mode) {
                 case VI_MODE_COLOR:
-					zr = zg = zb = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
+					zr = zg = zb = rdram_read_idx16((rdp_states[worker_id].zb_address >> 1) + line + x) >> 8;
                     switch (ctrl.type) {
                         case VI_TYPE_RGBA5551: {
                             uint16_t pix = rdram_read_idx16((frame_buffer >> 1) + line + x);

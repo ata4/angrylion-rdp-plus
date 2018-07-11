@@ -251,8 +251,8 @@ bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
 
     // update output size
     tex_display_height = output_height;
-
 	glDepthMask(GL_TRUE);
+
     return buffer_size_changed;
 }
 
@@ -308,6 +308,8 @@ void gl_screen_render(int32_t win_width, int32_t win_height, int32_t win_x, int3
 	glBindTexture(GL_TEXTURE_2D, depth_texture);
 	glBindVertexArray(vao);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
+
+
 
     // check if there was an error when using any of the commands above
     gl_check_errors();
