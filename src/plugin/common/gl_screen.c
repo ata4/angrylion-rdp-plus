@@ -144,26 +144,13 @@ void gl_screen_init(struct rdp_config* config)
 		"uniform sampler2D ColorValueTexture;\n"
         "uniform sampler2D DepthValueTexture;\n"
 
-		"float unpack8BitVec3IntoFloat(vec3 v, float min, float max) {\n"
-			"float zeroTo24Bit = v.x + v.y * 256.0 + v.z * 256.0 * 256.0; \n"
-			"float zeroToOne = zeroTo24Bit / 256.0 / 256.0 / 256.0; \n"
-			"return zeroToOne * (max - min) + min; \n"
-		"}\n"
-
-		"float color2float(in vec3 c) {\n"
-			"c *= 255.;\n"
-			"c = floor(c); // without this value could be shifted for some intervals\n"
-			"return c.r*256.*256. + c.g*256. + c.b - 8388608.;\n"
-		"}\n"
-
         "void main(void) {\n"
 #ifdef GLES
         "    color = texture(ColorValueTexture, uv);\n"
 #else
         "    color.bgra = texture(ColorValueTexture, uv);\n"
 #endif
-		"    //gl_FragDepth = color2float(texture(DepthValueTexture, uv).xyz);\n"
-		"    gl_FragDepth = texture(DepthValueTexture, uv).z;\n"
+		"    gl_FragDepth = texture(DepthValueTexture, uv).r;\n"
         "}\n";
 
     // compile and link OpenGL program
