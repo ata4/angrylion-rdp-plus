@@ -18,8 +18,8 @@
 
 static GLuint program;
 static GLuint vao;
-static GLuint texture;
-static GLuint depth_texture;
+static GLuint texture = 1;
+static GLuint depth_texture = 2;
 
 static int32_t tex_width;
 static int32_t tex_height;
@@ -168,6 +168,9 @@ void gl_screen_init(struct rdp_config* config)
     program = gl_shader_link(vert, frag);
     glUseProgram(program);
 
+	// enable depth
+	glEnable(GL_DEPTH_TEST);
+
     // prepare dummy VAO
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
@@ -203,55 +206,65 @@ bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
 {
     bool buffer_size_changed = tex_width != fb->width || tex_height != fb->height;
     
-	glDepthMask(GL_TRUE);
-
-	// set pitch for all unpacking operations
-	glPixelStorei(GL_UNPACK_ROW_LENGTH, fb->pitch);
-
     // check if the framebuffer size has changed
     if (buffer_size_changed) {
         tex_width = fb->width;
         tex_height = fb->height;
 
-
-		//// write the depth to the depthbuffer
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, depth_texture);
-
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, tex_width, tex_height, 0, GL_DEPTH_COMPONENT, TEX_TYPE, fb->depth);
-
 		// switch back to the default texture
-		glDepthMask(GL_FALSE);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture);
+		// disable depth
+		glDepthMask(GL_FALSE);
+		// set pitch for all unpacking operations
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, fb->pitch);
 
         // reallocate texture buffer on GPU
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, TEX_FORMAT, TEX_TYPE, fb->pixels);
 
-        msg_debug("%s: resized framebuffer texture: %dx%d", __FUNCTION__, tex_width, tex_height);
-    } else {
+		glBindTexture(GL_TEXTURE_2D, 0);
 
 		//// write the depth to the depthbuffer
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, depth_texture);
+		// enable depth
+		glDepthMask(GL_TRUE);
+		// set pitch for all unpacking operations
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, fb->pitch);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, tex_width, tex_height, 0, GL_DEPTH_COMPONENT, TEX_TYPE, fb->depth);
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+        msg_debug("%s: resized framebuffer texture: %dx%d", __FUNCTION__, tex_width, tex_height);
+    } else {
+		// switch back to the default texture
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture);
+		// disable depth
+		glDepthMask(GL_FALSE);
+
+        // copy local buffer to GPU texture buffer
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width, tex_height, TEX_FORMAT, TEX_TYPE, fb->pixels);
 		
+		/*
+		 * Somehow this breaks rendering anything whatsoever?
+		 */
+		//glBindTexture(GL_TEXTURE_2D, 0);
+
+		//// write the depth to the depthbuffer
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, depth_texture);
+		// enable depth
+		glDepthMask(GL_TRUE);
 
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width, tex_height, GL_DEPTH_COMPONENT, TEX_TYPE, fb->depth);
 
-		// switch back to the default texture
-		glDepthMask(GL_FALSE);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texture);
-		
-
-        // copy local buffer to GPU texture buffer
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width, tex_height,
-            TEX_FORMAT, TEX_TYPE, fb->pixels);		
+		glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     // update output size
     tex_display_height = output_height;
-	glDepthMask(GL_TRUE);
 
     return buffer_size_changed;
 }
@@ -287,29 +300,31 @@ void gl_screen_render(int32_t win_width, int32_t win_height, int32_t win_x, int3
         win_height = h_max;
     }
 
-    // configure viewport
-    glViewport(win_x, win_y, win_width, win_height);
+  
 
-	glDepthMask(GL_FALSE);
-	glDisable(GL_DEPTH_TEST);
-
-	// draw fullscreen triangle to the frame buffer?
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glBindVertexArray(0);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-
-
-	glDepthMask(GL_TRUE);
-	glEnable(GL_DEPTH_TEST);
-
-	//// draw to the depth to the depthbuffer
+	//// write the depth to the depthbuffer
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, depth_texture);
-	glBindVertexArray(vao);
+	// enable depth
+	glDepthMask(GL_TRUE);
+	// configure viewport
+	glViewport(win_x, win_y, win_width, win_height);
+	//// draw to the depth to the depthbuffer
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 
+	glBindTexture(GL_TEXTURE_2D, 0);
 
+	// switch back to the default texture
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	// disable depth
+	glDepthMask(GL_FALSE);
+	// configure viewport
+	glViewport(win_x, win_y, win_width, win_height);
+	// draw fullscreen triangle to the frame buffer?
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
 
     // check if there was an error when using any of the commands above
     gl_check_errors();
@@ -317,7 +332,19 @@ void gl_screen_render(int32_t win_width, int32_t win_height, int32_t win_x, int3
 
 void gl_screen_clear(void)
 {
+	glDepthMask(GL_TRUE);
+	//glActiveTexture(GL_TEXTURE1);
+	//glBindTexture(GL_TEXTURE_2D, depth_texture);
+	//glActiveTexture(GL_TEXTURE0);
+	//glBindTexture(GL_TEXTURE_2D, texture);
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	//glActiveTexture(GL_TEXTURE1);
+	//glBindTexture(GL_TEXTURE_2D, 0);
+	//glActiveTexture(GL_TEXTURE0);
+	//glBindTexture(GL_TEXTURE_2D, 0);
+	glDepthMask(GL_FALSE);
 }
 
 void gl_screen_close(void)
