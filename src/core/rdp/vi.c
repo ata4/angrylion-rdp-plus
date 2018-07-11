@@ -602,17 +602,17 @@ static void vi_process_fast(uint32_t worker_id)
         uint32_t* d = prescale_depth + y * hres_raw;
         
         for (x = 0; x < hres_raw; x++) {
-            uint32_t r, g, b, zrgb;
+            uint32_t r, g, b, zr, zg, zb;
 
             switch (config.vi.mode) {
                 case VI_MODE_COLOR:
+					zr = zg = zb = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
                     switch (ctrl.type) {
                         case VI_TYPE_RGBA5551: {
                             uint16_t pix = rdram_read_idx16((frame_buffer >> 1) + line + x);
                             r = RGBA16_R(pix);
                             g = RGBA16_G(pix);
                             b = RGBA16_B(pix);
-                            zrgb = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
                             break;
                         }
 
@@ -621,7 +621,6 @@ static void vi_process_fast(uint32_t worker_id)
                             r = RGBA32_R(pix);
                             g = RGBA32_G(pix);
                             b = RGBA32_B(pix);
-                            zrgb = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
                             break;
                         }
 
@@ -631,7 +630,7 @@ static void vi_process_fast(uint32_t worker_id)
                     break;
 
                 case VI_MODE_DEPTH: {
-                    r = g = b = zrgb = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
+                    r = g = b = zr = zg = zb = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
                     break;
                 }
 
@@ -641,7 +640,7 @@ static void vi_process_fast(uint32_t worker_id)
                     uint16_t pix;
                     rdram_read_pair16(&pix, &hval, (frame_buffer >> 1) + line + x);
                     r = g = b = (((pix & 1) << 2) | hval) << 5;
-                    zrgb = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
+					zr = zg = zb = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
                     break;
                 }
 
@@ -650,9 +649,10 @@ static void vi_process_fast(uint32_t worker_id)
             }
 
             gamma_filters(&r, &g, &b, ctrl, &rdp_states[worker_id].rand_vi);
+			gamma_filters(&zr, &zg, &zb, ctrl, &rdp_states[worker_id].rand_vi);
 
             dst[x] = (b << 16) | (g << 8) | r;
-            d[x] = (zrgb << 16) | (zrgb << 8) | zrgb;
+            d[x] = (zb << 16) | (zg << 8) | zr;
         }
     }
 }
