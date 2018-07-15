@@ -18,7 +18,11 @@
 
 static GLuint program;
 static GLuint vao;
-static GLuint texture;
+static GLuint texture = 1;
+static GLuint depth_texture = 2;
+
+static GLint colorValueTextureLocation;
+static GLint depthValueTextureLocation;
 
 static int32_t tex_width;
 static int32_t tex_height;
@@ -136,41 +140,65 @@ void gl_screen_init(struct rdp_config* config)
         SHADER_HEADER
         "in vec2 uv;\n"
         "layout(location = 0) out vec4 color;\n"
-        "uniform sampler2D tex0;\n"
+
+		"uniform sampler2D ColorValueTexture;\n"
+        "uniform sampler2D DepthValueTexture;\n"
+
         "void main(void) {\n"
 #ifdef GLES
-        "    color = texture(tex0, uv);\n"
+        "    color = texture(ColorValueTexture, uv);\n"
 #else
-        "    color.bgra = texture(tex0, uv);\n"
+        "    color.bgra = texture(ColorValueTexture, uv);\n"
 #endif
+		"    gl_FragDepth = texture(DepthValueTexture, uv).r;\n"
         "}\n";
 
     // compile and link OpenGL program
     GLuint vert = gl_shader_compile(GL_VERTEX_SHADER, vert_shader);
     GLuint frag = gl_shader_compile(GL_FRAGMENT_SHADER, frag_shader);
     program = gl_shader_link(vert, frag);
+
+	// get the uniform variables location
+	depthValueTextureLocation = glGetUniformLocation(program, "DepthValueTexture");
+	colorValueTextureLocation = glGetUniformLocation(program, "ColorValueTexture");
+
+	// specify the shader program to use
     glUseProgram(program);
+
+	// bind the uniform variables locations
+	glUniform1i(depthValueTextureLocation, 0);
+	glUniform1i(colorValueTextureLocation, 1);
 
     // prepare dummy VAO
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
-    // prepare texture
+	// select interpolation method
+	GLint filter;
+	switch (config->vi.interp) {
+	case VI_INTERP_LINEAR:
+		filter = GL_LINEAR;
+		break;
+	case VI_INTERP_NEAREST:
+	default:
+		filter = GL_NEAREST;
+	}
+
+    // prepare depth texture
+	glActiveTexture(GL_TEXTURE0 + 0);
+    glGenTextures(1, &depth_texture);
+    glBindTexture(GL_TEXTURE_2D, depth_texture);
+	// configure interpolation method
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+
+    // prepare color texture
+	glActiveTexture(GL_TEXTURE0 + 1);
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-
-    // select interpolation method
-    GLint filter;
-    switch (config->vi.interp) {
-        case VI_INTERP_LINEAR:
-            filter = GL_LINEAR;
-            break;
-        case VI_INTERP_NEAREST:
-        default:
-            filter = GL_NEAREST;
-    }
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+	// configure interpolation method
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
 
     // check if there was an error when using any of the commands above
     gl_check_errors();
@@ -179,24 +207,59 @@ void gl_screen_init(struct rdp_config* config)
 bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
 {
     bool buffer_size_changed = tex_width != fb->width || tex_height != fb->height;
-
+    
     // check if the framebuffer size has changed
     if (buffer_size_changed) {
         tex_width = fb->width;
         tex_height = fb->height;
 
-        // set pitch for all unpacking operations
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, fb->pitch);
+		// select the color value binding
+		glActiveTexture(GL_TEXTURE0 + 1);
+		glBindTexture(GL_TEXTURE_2D, texture);
 
+		// set pitch for all unpacking operations
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, fb->pitch);
         // reallocate texture buffer on GPU
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width,
-            tex_height, 0, TEX_FORMAT, TEX_TYPE, fb->pixels);
+		glDepthMask(false);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, TEX_FORMAT, TEX_TYPE, fb->pixels);
+		glDepthMask(true);
+
+		// select the depth value binding
+		glActiveTexture(GL_TEXTURE0 + 0);
+		glBindTexture(GL_TEXTURE_2D, depth_texture);
+
+		// set pitch for all unpacking operations
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, fb->pitch);
+		// reallocate texture buffer on GPU
+		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+		glEnable(GL_DEPTH_TEST);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, TEX_FORMAT, TEX_TYPE, fb->depth);
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+		glDisable(GL_DEPTH_TEST);
+
 
         msg_debug("%s: resized framebuffer texture: %dx%d", __FUNCTION__, tex_width, tex_height);
     } else {
+		// select the color value binding
+		glActiveTexture(GL_TEXTURE0 + 1);
+		glBindTexture(GL_TEXTURE_2D, texture);
+
         // copy local buffer to GPU texture buffer
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width, tex_height,
-            TEX_FORMAT, TEX_TYPE, fb->pixels);
+		glDepthMask(false);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width, tex_height, TEX_FORMAT, TEX_TYPE, fb->pixels);
+		glDepthMask(true);
+
+		// select the depth value binding
+		glActiveTexture(GL_TEXTURE0 + 0);
+		glBindTexture(GL_TEXTURE_2D, depth_texture);
+
+		// copy local buffer to GPU texture buffer
+		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+		glEnable(GL_DEPTH_TEST);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width, tex_height, TEX_FORMAT, TEX_TYPE, fb->depth);
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+		glDisable(GL_DEPTH_TEST);
+
     }
 
     // update output size
@@ -236,11 +299,26 @@ void gl_screen_render(int32_t win_width, int32_t win_height, int32_t win_x, int3
         win_height = h_max;
     }
 
-    // configure viewport
-    glViewport(win_x, win_y, win_width, win_height);
+	// configure viewport
+	glViewport(win_x, win_y, win_width, win_height);
 
-    // draw fullscreen triangle
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+	// select the color value binding
+	glActiveTexture(GL_TEXTURE0 + 1);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	// draw
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+
+	// select the depth value binding
+	glActiveTexture(GL_TEXTURE0 + 0);
+	glBindTexture(GL_TEXTURE_2D, depth_texture);
+
+	// draw
+	glEnable(GL_DEPTH_TEST);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+	glDisable(GL_DEPTH_TEST);
+
 
     // check if there was an error when using any of the commands above
     gl_check_errors();
