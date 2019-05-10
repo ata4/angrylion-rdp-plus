@@ -71,7 +71,7 @@ endif(MINGW)
 
 # set IPO option, if supported
 if(ENABLE_IPO AND (CMAKE_BUILD_TYPE STREQUAL "Release"))
-    set_target_properties(alp-core PROPERTIES INTERPROCEDURAL_OPTIMIZATION ON)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 endif()
 
 include_directories(${PATH_SRC})
