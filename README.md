@@ -1,4 +1,4 @@
-# Angrylion RDP Plus
+# Angrylion RDP X
 
 This is a conservative fork of angrylion's RDP plugin that aims to improve performance add new features while retaining the accuracy of the original plugin.
 
