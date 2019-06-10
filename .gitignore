@@ -6,3 +6,41 @@
 
 src/core/version.h
 private/
+
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ii]ntermediate/
+[Bb]uild/
+[Dd]ebug/
+[Rr]elease/
+*.obj
+*.cso
+
+# Visual Studio cache files
+.vs/
+ipch/
+packages/
+*.aps
+*.VC.db
+*.VC.opendb
+*.sdf
+*.opensdf
+*.suo
+*.vcxproj.user
+
+# Visual Studio performance profiling
+*.vsp
+*.psess
+
+# Code signing
+*.pfx
+*.pvk
+
+# Temporary OS files
+.DS_Store
+Thumbs.db
+
+# Versioning
+/res/Version.h
+
