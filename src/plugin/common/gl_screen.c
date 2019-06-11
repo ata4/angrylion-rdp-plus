@@ -4,6 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <cuda_runtime.h>
+#include <cuda_gl_interop.h>
+
 #ifdef GLES
 #include <GLES3/gl3.h>
 #define SHADER_HEADER "#version 300 es\nprecision lowp float;\n"
