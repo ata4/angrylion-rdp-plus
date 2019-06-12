@@ -7,6 +7,9 @@
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 
+#include <helper_cuda.h>
+
+
 #ifdef GLES
 #include <GLES3/gl3.h>
 #define SHADER_HEADER "#version 300 es\nprecision lowp float;\n"
@@ -31,6 +34,16 @@ static int32_t tex_width;
 static int32_t tex_height;
 
 static int32_t tex_display_height;
+
+/**
+ * CUDA devices corresponding to the current OpenGL context
+ */
+enum cudaGLDeviceList
+{
+	cudaGLDeviceListAll = 1, /**< The CUDA devices for all GPUs used by the current OpenGL context */
+	cudaGLDeviceListCurrentFrame = 2, /**< The CUDA devices for the GPUs used by the current OpenGL context in its currently rendering frame */
+	cudaGLDeviceListNextFrame = 3  /**< The CUDA devices for the GPUs to be used by the current OpenGL context in the next frame  */
+};
 
 #ifdef _DEBUG
 static void gl_check_errors(void)
