@@ -1,21 +1,21 @@
 #ifndef POINTER_C_GENERATED_HEADER_OPENGL_H
 #define POINTER_C_GENERATED_HEADER_OPENGL_H
 
-#if defined(__glew_h__) || defined(__GLEW_H__)
-#error Attempt to include auto-generated header after including glew.h
-#endif
-#if defined(__gl_h_) || defined(__GL_H__)
-#error Attempt to include auto-generated header after including gl.h
-#endif
-#if defined(__glext_h_) || defined(__GLEXT_H_)
-#error Attempt to include auto-generated header after including glext.h
-#endif
-#if defined(__gltypes_h_)
-#error Attempt to include auto-generated header after gltypes.h
-#endif
-#if defined(__gl_ATI_h_)
-#error Attempt to include auto-generated header after including glATI.h
-#endif
+//#if defined(__glew_h__) || defined(__GLEW_H__)
+//#error Attempt to include auto-generated header after including glew.h
+//#endif
+//#if defined(__gl_h_) || defined(__GL_H__)
+//#error Attempt to include auto-generated header after including gl.h
+//#endif
+//#if defined(__glext_h_) || defined(__GLEXT_H_)
+//#error Attempt to include auto-generated header after including glext.h
+//#endif
+//#if defined(__gltypes_h_)
+//#error Attempt to include auto-generated header after gltypes.h
+//#endif
+//#if defined(__gl_ATI_h_)
+//#error Attempt to include auto-generated header after including glATI.h
+//#endif
 
 #define __glew_h__
 #define __GLEW_H__
@@ -1680,6 +1680,19 @@ extern void (CODEGEN_FUNCPTR *_ptrc_glVertexAttribP4ui)(GLuint index, GLenum typ
 #define glVertexAttribP4ui _ptrc_glVertexAttribP4ui
 extern void (CODEGEN_FUNCPTR *_ptrc_glVertexAttribP4uiv)(GLuint index, GLenum type, GLboolean normalized, const GLuint * value);
 #define glVertexAttribP4uiv _ptrc_glVertexAttribP4uiv
+
+extern void (CODEGEN_FUNCPTR *_ptrc_cudaMalloc)(void **p, size_t s);
+#define cudaMalloc _ptrc_cudaMalloc
+extern void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsUnmapResources)(int count, cudaGraphicsResource_t *resources, cudaStream_t stream);
+#define cudaGraphicsUnmapResources _ptrc_cudaGraphicsUnmapResources
+extern void (CODEGEN_FUNCPTR *_ptrc_cudaDeviceReset)(void);
+#define cudaDeviceReset _ptrc_cudaDeviceReset
+extern void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsGLRegisterBuffer)(struct cudaGraphicsResource **resource, GLuint buffer, unsigned int flags);
+#define cudaGraphicsGLRegisterBuffer _ptrc_cudaGraphicsGLRegisterBuffer
+extern void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsMapResources)(void **p, size_t s);
+#define cudaGraphicsMapResources _ptrc_cudaGraphicsMapResources
+extern void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsResourceGetMappedPointer)(void **p, size_t s);
+#define cudaGraphicsResourceGetMappedPointer _ptrc_cudaGraphicsResourceGetMappedPointer
 
 enum ogl_LoadStatus
 {

@@ -3,6 +3,12 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
+
+#include <cuda.h>
+#include <cuda_runtime_api.h>
+#include <cuda_runtime.h>
+#include <cuda_gl_interop.h>
 
 #ifdef GLES
 #include <GLES3/gl3.h>
@@ -18,6 +24,10 @@
 
 static GLuint program;
 static GLuint vao;
+static GLuint vbo;
+struct cudaGraphicsResource *cuda_vbo_resource;
+void *d_vbo_buffer = NULL;
+
 static GLuint texture = 1;
 static GLuint depth_texture = 2;
 
@@ -26,6 +36,8 @@ static GLint depthValueTextureLocation;
 
 static int32_t tex_width;
 static int32_t tex_height;
+
+static float g_fAnim = 0.0;
 
 static int32_t tex_display_height;
 
@@ -73,6 +85,12 @@ static void gl_check_errors(void)
 #else
 #define gl_check_errors(...)
 #endif
+
+static void gl_check_error_handle_cuda(void) {
+	gl_check_errors();
+	cudaDeviceReset();
+	exit(EXIT_FAILURE);
+}
 
 static GLuint gl_shader_compile(GLenum type, const GLchar* source)
 {
@@ -169,6 +187,9 @@ void gl_screen_init(struct rdp_config* config)
 	glUniform1i(depthValueTextureLocation, 0);
 	glUniform1i(colorValueTextureLocation, 1);
 
+	// create VBO
+	cudaMalloc((void **)&d_vbo_buffer, tex_width*tex_height * 4 * sizeof(float));
+
     // prepare dummy VAO
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
@@ -204,10 +225,39 @@ void gl_screen_init(struct rdp_config* config)
     gl_check_errors();
 }
 
+void runCuda(struct cudaGraphicsResource **vbo_resource, struct rdp_frame_buffer* fb)
+{
+	// map OpenGL buffer object for writing from CUDA
+	float4 *dptr;
+	cudaGraphicsMapResources(1, vbo_resource, 0);
+	size_t num_bytes;
+	cudaGraphicsResourceGetMappedPointer((void **)&dptr, &num_bytes, *vbo_resource);
+	//printf("CUDA mapped VBO: May access %ld bytes\n", num_bytes);
+
+	// execute the kernel
+	//    dim3 block(8, 8, 1);
+	//    dim3 grid(mesh_width / block.x, mesh_height / block.y, 1);
+	//    kernel<<< grid, block>>>(dptr, mesh_width, mesh_height, g_fAnim);
+
+	//launch_kernel(dptr, fb->width, fb->height, g_fAnim);
+
+	// unmap buffer object
+	cudaGraphicsUnmapResources(1, vbo_resource, 0);
+}
+
 bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
 {
     bool buffer_size_changed = tex_width != fb->width || tex_height != fb->height;
     
+	// create buffer object
+	glGenBuffers(1, vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+	// initialize buffer object
+	GLuint size = tex_width * tex_height * 4 * sizeof(float);
+	glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
     // check if the framebuffer size has changed
     if (buffer_size_changed) {
         tex_width = fb->width;
@@ -261,6 +311,11 @@ bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
 		glDisable(GL_DEPTH_TEST);
 
     }
+
+	// register this buffer object with CUDA
+	cudaGraphicsGLRegisterBuffer(&cuda_vbo_resource, vbo, -1);
+
+	gl_check_error_handle_cuda();
 
     // update output size
     tex_display_height = output_height;
