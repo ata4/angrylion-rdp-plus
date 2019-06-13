@@ -1,9 +1,10 @@
 # angrylion-rdp-x
 
-angrylion-rdp-x is a fork of angrylion-rdp-plus, which is itself a fork of angrylion's RDP plugin. While angrylion-rdp-plus has aimed to improve performance and add new features while retaining the accuracy of the original plugin, angrylion-rdp-x is a project of mine to attempt to explore what can be done with Nintendo 64 graphics emulation.
+angrylion-rdp-x is a fork of angrylion-rdp-plus, which is itself a fork of angrylion's RDP plugin. While angrylion-rdp-plus has aimed to improve performance and add new features while retaining the accuracy of the original plugin, angrylion-rdp-x is a project of mine to attempt to explore Nintendo 64 graphics emulation.
 
 ### New features in angrylion-rdp-x
  * Population of depth buffer for ReShade compatibility.
+ * (WIP) some sort of CUDA implementation.
  
 ### Features from angrylion-rdp-plus
 * More maintainable code base by dividing the huge n64video.cpp into smaller pieces.
