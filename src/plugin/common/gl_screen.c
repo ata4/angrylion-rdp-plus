@@ -23,7 +23,6 @@
 #endif
 
 static GLuint program;
-static GLuint vao;
 static GLuint vbo;
 struct cudaGraphicsResource *cuda_vbo_resource;
 void *d_vbo_buffer = NULL;
@@ -191,8 +190,8 @@ void gl_screen_init(struct rdp_config* config)
 	cudaMalloc((void **)&d_vbo_buffer, tex_width*tex_height * 4 * sizeof(float));
 
     // prepare dummy VAO
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+    glGenVertexArrays(1, &vbo);
+    glBindVertexArray(vbo);
 
 	// select interpolation method
 	GLint filter;
@@ -314,8 +313,10 @@ bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
 
 	// register this buffer object with CUDA
 	cudaGraphicsGLRegisterBuffer(&cuda_vbo_resource, vbo, -1);
-
-	gl_check_error_handle_cuda();
+	// run CUDA
+	runCuda(&cuda_vbo_resource, fb);
+	// check if there was an error when using any of the commands above
+	gl_check_errors();
 
     // update output size
     tex_display_height = output_height;
@@ -392,6 +393,6 @@ void gl_screen_close(void)
     tex_display_height = 0;
 
     glDeleteTextures(1, &texture);
-    glDeleteVertexArrays(1, &vao);
+    glDeleteVertexArrays(1, &vbo);
     glDeleteProgram(program);
 }
