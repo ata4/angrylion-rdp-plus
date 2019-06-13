@@ -26,6 +26,8 @@
 #define __gltypes_h_
 #define __gl_ATI_h_
 
+#define __dv(v)
+
 #ifndef APIENTRY
 	#if defined(__MINGW32__)
 		#ifndef WIN32_LEAN_AND_MEAN
@@ -1689,9 +1691,9 @@ extern void (CODEGEN_FUNCPTR *_ptrc_cudaDeviceReset)(void);
 #define cudaDeviceReset _ptrc_cudaDeviceReset
 extern void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsGLRegisterBuffer)(struct cudaGraphicsResource **resource, GLuint buffer, unsigned int flags);
 #define cudaGraphicsGLRegisterBuffer _ptrc_cudaGraphicsGLRegisterBuffer
-extern void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsMapResources)(void **p, size_t s);
+extern void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsMapResources)(int count, cudaGraphicsResource_t *resources, cudaStream_t stream __dv(0));
 #define cudaGraphicsMapResources _ptrc_cudaGraphicsMapResources
-extern void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsResourceGetMappedPointer)(void **p, size_t s);
+extern void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsResourceGetMappedPointer)(void **devPtr, size_t *size, cudaGraphicsResource_t resource);
 #define cudaGraphicsResourceGetMappedPointer _ptrc_cudaGraphicsResourceGetMappedPointer
 
 enum ogl_LoadStatus

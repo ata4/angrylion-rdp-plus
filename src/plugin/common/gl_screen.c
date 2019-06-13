@@ -312,7 +312,7 @@ bool gl_screen_write(struct rdp_frame_buffer* fb, int32_t output_height)
     }
 
 	// register this buffer object with CUDA
-	cudaGraphicsGLRegisterBuffer(&cuda_vbo_resource, vbo, -1);
+	cudaGraphicsGLRegisterBuffer(&cuda_vbo_resource, vbo, (unsigned int)-1);
 	// run CUDA
 	runCuda(&cuda_vbo_resource, fb);
 	// check if there was an error when using any of the commands above

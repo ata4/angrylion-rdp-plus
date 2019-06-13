@@ -368,8 +368,8 @@ void (CODEGEN_FUNCPTR *_ptrc_cudaMalloc)(void **p, size_t s) = NULL;
 void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsUnmapResources)(int count, cudaGraphicsResource_t *resources, cudaStream_t stream __dv(0)) = NULL;
 void (CODEGEN_FUNCPTR *_ptrc_cudaDeviceReset)(void) = NULL;
 void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsGLRegisterBuffer)(struct cudaGraphicsResource **resource, GLuint buffer, unsigned int flags) = NULL;
-void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsMapResources)(void **p, size_t s) = NULL;
-void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsResourceGetMappedPointer)(void **p, size_t s) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsMapResources)(int count, cudaGraphicsResource_t *resources, cudaStream_t stream __dv(0)) = NULL;
+void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsResourceGetMappedPointer)(void **devPtr, size_t *size, cudaGraphicsResource_t resource) = NULL;
 
 static int Load_Version_3_3(void)
 {
