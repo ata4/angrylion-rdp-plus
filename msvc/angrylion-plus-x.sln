@@ -16,11 +16,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "plugin-zilmar", "plugin-zil
 		{13F7DDD7-2282-408A-AEF9-72266E0236DC} = {13F7DDD7-2282-408A-AEF9-72266E0236DC}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "plugin-cuda-common", "plugin-cuda-common\plugin-cuda-common.vcxproj", "{C4A8ED89-6F2F-40C2-8EDA-4577EB49DE07}"
-	ProjectSection(ProjectDependencies) = postProject
-		{D86C6E84-3371-4B20-8620-A703FF3F2CC5} = {D86C6E84-3371-4B20-8620-A703FF3F2CC5}
-	EndProjectSection
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "plugin-common", "plugin-common.vcxproj", "{13F7DDD7-2282-408A-AEF9-72266E0236DC}"
 EndProject
 Global
@@ -55,12 +50,6 @@ Global
 		{722AD25D-C281-48FB-9A58-7699E50F8E6D}.Release|x64.Build.0 = Release|x64
 		{722AD25D-C281-48FB-9A58-7699E50F8E6D}.Release|x86.ActiveCfg = Release|Win32
 		{722AD25D-C281-48FB-9A58-7699E50F8E6D}.Release|x86.Build.0 = Release|Win32
-		{C4A8ED89-6F2F-40C2-8EDA-4577EB49DE07}.Debug|x64.ActiveCfg = Debug|x64
-		{C4A8ED89-6F2F-40C2-8EDA-4577EB49DE07}.Debug|x64.Build.0 = Debug|x64
-		{C4A8ED89-6F2F-40C2-8EDA-4577EB49DE07}.Debug|x86.ActiveCfg = Debug|x64
-		{C4A8ED89-6F2F-40C2-8EDA-4577EB49DE07}.Release|x64.ActiveCfg = Release|x64
-		{C4A8ED89-6F2F-40C2-8EDA-4577EB49DE07}.Release|x64.Build.0 = Release|x64
-		{C4A8ED89-6F2F-40C2-8EDA-4577EB49DE07}.Release|x86.ActiveCfg = Release|x64
 		{13F7DDD7-2282-408A-AEF9-72266E0236DC}.Debug|x64.ActiveCfg = Debug|x64
 		{13F7DDD7-2282-408A-AEF9-72266E0236DC}.Debug|x64.Build.0 = Debug|x64
 		{13F7DDD7-2282-408A-AEF9-72266E0236DC}.Debug|x86.ActiveCfg = Debug|Win32
