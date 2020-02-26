@@ -118,8 +118,8 @@ private:
                 m_signal_work.wait(ul, [worker_mask, this] {
                     return (m_tasks_done & worker_mask) == 0;
                 });
+            }
 #else
-
             //Busy loop wait for a bit to keep cores awake
             bool workAvailable = false;
             int count = 0;
@@ -136,7 +136,6 @@ private:
                 return (m_tasks_done & worker_mask) == 0;
             });
 #endif
-            }
         }
     }
 
