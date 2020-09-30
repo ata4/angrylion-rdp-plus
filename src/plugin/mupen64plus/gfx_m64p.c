@@ -110,8 +110,6 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle _CoreLibHandle, void *Co
     CoreGetVersion = (ptr_PluginGetVersion)DLSYM(CoreLibHandle, "PluginGetVersion");
 
     n64video_config_init(&config);
-    vdac_init(&config);
-    screen_init(&config);
 
     ConfigSetDefaultBool(configVideoAngrylionPlus, KEY_PARALLEL, config.parallel, "Distribute rendering between multiple processors if True");
     ConfigSetDefaultInt(configVideoAngrylionPlus, KEY_NUM_WORKERS, config.num_workers, "Rendering Workers (0=Use all logical processors)");
@@ -227,6 +225,7 @@ EXPORT int CALL RomOpen (void)
     config.gfx.dp_reg = (uint32_t**)&gfx.DPC_START_REG;
 
     n64video_init(&config);
+    vdac_init(&config);
 
     return 1;
 }
@@ -234,7 +233,6 @@ EXPORT int CALL RomOpen (void)
 EXPORT void CALL RomClosed (void)
 {
     vdac_close();
-    screen_close();
     n64video_close();
 }
 
