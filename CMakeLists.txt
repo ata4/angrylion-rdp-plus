@@ -4,6 +4,8 @@ option(GLES "Set to ON to use OpenGL ES 3.0 renderer instead of OpenGL 3.3 core"
 
 project(angrylion-plus)
 
+include(GNUInstallDirs)
+
 set(OpenGL_GL_PREFERENCE GLVND)
 
 if(GLES)
@@ -141,3 +143,9 @@ if(NOT ANDROID)
 endif()
 
 target_link_libraries(${NAME_PLUGIN_M64P} alp-core alp-output ${CMAKE_THREAD_LIBS_INIT} ${OPENGL_LIBRARIES})
+
+if(UNIX AND NOT APPLE AND NOT ANDROID)
+    install(TARGETS ${NAME_PLUGIN_M64P}
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/mupen64plus"
+    )
+endif()
