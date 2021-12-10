@@ -44,11 +44,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif(NOT CMAKE_BUILD_TYPE)
 
-find_package(Git REQUIRED)
-find_package(PythonInterp 3.2 REQUIRED)
-
 if (NOT ANDROID)
-    find_package(PythonLibs)
     find_package(OpenGL REQUIRED)
 endif()
 
@@ -61,7 +57,7 @@ if ( MSVC )
     set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} /W4 /w14640 /permissive-")
 endif()
 
-set(PATH_SRC "src")
+set(PATH_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 # RDP core library
 set(PATH_CORE "${PATH_SRC}/core")
@@ -72,8 +68,9 @@ set(PATH_VERSION "${PATH_CORE}/version.h")
 add_custom_command(
     OUTPUT ${PATH_VERSION}
     COMMAND
-        ${PYTHON_EXECUTABLE}
-        "${CMAKE_SOURCE_DIR}/make_version.py"
+        ${CMAKE_COMMAND} -DPATH_VERSION=${PATH_VERSION}
+        -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/git-version.cmake
     COMMENT "Generate Git version"
 )
 
