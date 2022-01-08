@@ -48,8 +48,9 @@ jobs:
           sudo ldconfig
       - name: Build and related stuff
         run: |
-          R_TAG=$(git tag -l | grep 'nightly-build')
-          if ! [[ "${R_TAG}" == "" ]]; then git tag --delete nightly-build; fi
+          set +e
+          git tag --delete nightly-build
+          set -e
           unset TARCH
           if [[ "${{ matrix.platform }}" == "x86" ]]; then TARCH="-DCMAKE_C_FLAGS=\"-m32\" -DCMAKE_CXX_FLAGS=\"-m32\""; fi
           G_REV=$(git describe --dirty --always --tags)
