@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 
+option(BUILD_MUPEN64PLUS "Enables build of mupen64plus version" ON)
+option(BUILD_PROJECT64   "Enables build of project64 version" WIN32)
 option(GLES "Set to ON to use OpenGL ES 3.0 renderer instead of OpenGL 3.3 core")
 
 project(angrylion-plus)
@@ -7,6 +9,11 @@ project(angrylion-plus)
 include(GNUInstallDirs)
 
 set(OpenGL_GL_PREFERENCE GLVND)
+
+if (BUILD_PROJECT64 AND NOT WIN32)
+    message(WARNING "BUILD_PROJECT64 is ON but not supported on current platform, disabling option")
+    set(BUILD_PROJECT64 OFF)
+endif()
 
 if(GLES)
     message("OpenGL ES 3.0 renderer enabled")
@@ -114,7 +121,7 @@ endif()
 include_directories(${PATH_SRC})
 
 # Project64 GFX Plugin (Windows only)
-if(WIN32)
+if(BUILD_PROJECT64)
     set(NAME_PLUGIN_ZILMAR ${CMAKE_PROJECT_NAME})
     set(PATH_PLUGIN_ZILMAR "${PATH_SRC}/plugin/zilmar")
 
@@ -125,24 +132,26 @@ if(WIN32)
     set_target_properties(${NAME_PLUGIN_ZILMAR} PROPERTIES PREFIX "")
 
     target_link_libraries(${NAME_PLUGIN_ZILMAR} alp-core alp-output shlwapi ${OPENGL_LIBRARIES})
-endif(WIN32)
+endif(BUILD_PROJECT64)
 
 # Mupen64Plus GFX plugin
-set(NAME_PLUGIN_M64P "mupen64plus-video-${CMAKE_PROJECT_NAME}")
-
-set(PATH_PLUGIN_M64P "${PATH_SRC}/plugin/mupen64plus")
-
-file(GLOB SOURCES_PLUGIN_M64P "${PATH_PLUGIN_M64P}/*.c")
-add_library(${NAME_PLUGIN_M64P} SHARED ${SOURCES_PLUGIN_M64P})
-
-if(NOT ANDROID)
-    set_target_properties(${NAME_PLUGIN_M64P} PROPERTIES PREFIX "")
-endif()
-
-target_link_libraries(${NAME_PLUGIN_M64P} alp-core alp-output ${CMAKE_THREAD_LIBS_INIT} ${OPENGL_LIBRARIES})
-
-if(UNIX AND NOT APPLE AND NOT ANDROID)
-    install(TARGETS ${NAME_PLUGIN_M64P}
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/mupen64plus"
-    )
-endif()
+if(BUILD_MUPEN64PLUS)
+    set(NAME_PLUGIN_M64P "mupen64plus-video-${CMAKE_PROJECT_NAME}")
+    
+    set(PATH_PLUGIN_M64P "${PATH_SRC}/plugin/mupen64plus")
+    
+    file(GLOB SOURCES_PLUGIN_M64P "${PATH_PLUGIN_M64P}/*.c")
+    add_library(${NAME_PLUGIN_M64P} SHARED ${SOURCES_PLUGIN_M64P})
+    
+    if(NOT ANDROID)
+        set_target_properties(${NAME_PLUGIN_M64P} PROPERTIES PREFIX "")
+    endif()
+    
+    target_link_libraries(${NAME_PLUGIN_M64P} alp-core alp-output ${CMAKE_THREAD_LIBS_INIT} ${OPENGL_LIBRARIES})
+    
+    if(UNIX AND NOT APPLE AND NOT ANDROID)
+        install(TARGETS ${NAME_PLUGIN_M64P}
+            DESTINATION "${CMAKE_INSTALL_LIBDIR}/mupen64plus"
+        )
+    endif()
+endif(BUILD_MUPEN64PLUS)
