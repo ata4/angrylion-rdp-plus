@@ -116,7 +116,7 @@ static void vi_init(void)
     vi_restore_init();
 
     memset(prescale, 0, sizeof(prescale));
-	memset(prescale_depth, 0, sizeof(prescale_depth));
+    memset(prescale_depth, 0, sizeof(prescale_depth));
 
     prevvicurrent = 0;
     emucontrolsvicurrent = -1;
@@ -547,7 +547,7 @@ static void vi_process_end(void)
         fb.height = (ispal ? V_RES_PAL : V_RES_NTSC) >> !ctrl.serrate;
         output_height = V_RES_NTSC;
     }
-    
+
     if (config.vi.widescreen) {
         output_height = output_height * 3 / 4;
     }
@@ -600,13 +600,13 @@ static void vi_process_fast(uint32_t worker_id)
         int32_t line = y * vi_width_low;
         uint32_t* dst = prescale + y * hres_raw;
         uint32_t* d = prescale_depth + y * hres_raw;
-        
+
         for (x = 0; x < hres_raw; x++) {
             uint32_t r, g, b, zr, zg, zb;
 
             switch (config.vi.mode) {
                 case VI_MODE_COLOR:
-					zr = zg = zb = rdram_read_idx16((rdp_states[worker_id].zb_address >> 1) + line + x) >> 8;
+                    zr = zg = zb = rdram_read_idx16((rdp_states[worker_id].zb_address >> 1) + line + x) >> 8;
                     switch (ctrl.type) {
                         case VI_TYPE_RGBA5551: {
                             uint16_t pix = rdram_read_idx16((frame_buffer >> 1) + line + x);
@@ -640,7 +640,7 @@ static void vi_process_fast(uint32_t worker_id)
                     uint16_t pix;
                     rdram_read_pair16(&pix, &hval, (frame_buffer >> 1) + line + x);
                     r = g = b = (((pix & 1) << 2) | hval) << 5;
-					zr = zg = zb = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
+                    zr = zg = zb = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
                     break;
                 }
 
@@ -649,7 +649,7 @@ static void vi_process_fast(uint32_t worker_id)
             }
 
             gamma_filters(&r, &g, &b, ctrl, &rdp_states[worker_id].rand_vi);
-			gamma_filters(&zr, &zg, &zb, ctrl, &rdp_states[worker_id].rand_vi);
+            gamma_filters(&zr, &zg, &zb, ctrl, &rdp_states[worker_id].rand_vi);
 
             dst[x] = (b << 16) | (g << 8) | r;
             d[x] = (zb << 16) | (zg << 8) | zr;
