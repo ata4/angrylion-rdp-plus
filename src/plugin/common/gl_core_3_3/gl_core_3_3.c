@@ -3,9 +3,6 @@
 #include <string.h>
 #include <stddef.h>
 
-
-#define __dv(v)
-
 void* IntGetProcAddress(const char *name);
 
 void (CODEGEN_FUNCPTR *_ptrc_glBlendFunc)(GLenum sfactor, GLenum dfactor) = NULL;
@@ -363,13 +360,6 @@ void (CODEGEN_FUNCPTR *_ptrc_glVertexAttribP3ui)(GLuint index, GLenum type, GLbo
 void (CODEGEN_FUNCPTR *_ptrc_glVertexAttribP3uiv)(GLuint index, GLenum type, GLboolean normalized, const GLuint * value) = NULL;
 void (CODEGEN_FUNCPTR *_ptrc_glVertexAttribP4ui)(GLuint index, GLenum type, GLboolean normalized, GLuint value) = NULL;
 void (CODEGEN_FUNCPTR *_ptrc_glVertexAttribP4uiv)(GLuint index, GLenum type, GLboolean normalized, const GLuint * value) = NULL;
-
-void (CODEGEN_FUNCPTR *_ptrc_cudaMalloc)(void **p, size_t s) = NULL;
-void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsUnmapResources)(int count, cudaGraphicsResource_t *resources, cudaStream_t stream __dv(0)) = NULL;
-void (CODEGEN_FUNCPTR *_ptrc_cudaDeviceReset)(void) = NULL;
-void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsGLRegisterBuffer)(struct cudaGraphicsResource **resource, GLuint buffer, unsigned int flags) = NULL;
-void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsMapResources)(int count, cudaGraphicsResource_t *resources, cudaStream_t stream __dv(0)) = NULL;
-void (CODEGEN_FUNCPTR *_ptrc_cudaGraphicsResourceGetMappedPointer)(void **devPtr, size_t *size, cudaGraphicsResource_t resource) = NULL;
 
 static int Load_Version_3_3(void)
 {
