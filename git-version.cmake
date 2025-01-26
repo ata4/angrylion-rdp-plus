@@ -4,7 +4,7 @@ set(GIT_COMMIT_HASH "unknown")
 set(GIT_TAG "unknown")
 
 find_package(Git)
-if(GIT_FOUND AND EXISTS "${SOURCE_DIR}/.git/")
+if(GIT_FOUND AND EXISTS "${SOURCE_DIR}/.git")
 	execute_process(
 		COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref HEAD
 		WORKING_DIRECTORY ${SOURCE_DIR}
