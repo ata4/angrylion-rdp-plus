@@ -128,7 +128,8 @@ static void fbfill_4(struct rdp_state* wstate, uint32_t curpixel, int flip, int*
 static void fbfill_8(struct rdp_state* wstate, uint32_t curpixel, int flip, int* delayedhbwidx)
 {
     uint32_t fb = wstate->fb_address + curpixel;
-    uint8_t val = (wstate->fill_color >> ((fb & 3) ^ 3) << 3) & 0xff;
+    uint32_t shift = ((fb & 3u) ^ 3u) << 3;
+    uint8_t val = (uint8_t)(wstate->fill_color >> shift);
     rdram_write_pair8(fb, val, flip, delayedhbwidx);
 }
 
