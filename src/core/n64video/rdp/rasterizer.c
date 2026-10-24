@@ -345,6 +345,183 @@ void rejected_hbwrite_2cycle(struct rdp_state* wstate, int cdith, uint32_t blend
     }
 }
 
+/*
+ * Memory colour hand-over between scanlines in parallel mode
+ *
+ * In 2-cycle mode the first blender cycle uses the memory colour of the
+ * previous pixel the pipeline processed: memory_color is only updated from
+ * pre_memory_color after it. For the first pixel of a span that is the last
+ * pixel read on the previous span, i.e. the pixel at x = lx of the previous
+ * valid scanline of the same primitive, or the last one read by the previous
+ * 1/2-cycle primitive. With lx at the framebuffer's right edge that address
+ * wraps to the start of the next row. Without image read, fbread leaves the
+ * colour channels unchanged, so they carry over from earlier primitives.
+ *
+ * In parallel mode every worker renders only every stride-th scanline, so it
+ * carried these values over from scanline y - stride and from its own
+ * history, and the pixel it needed may belong to a row rendered by another
+ * worker that may or may not have written it yet. The output differed from
+ * the single-threaded renderer (and from hardware) on the first pixel of
+ * spans, and varied between runs.
+ *
+ * Fix: every worker tracks memory_color and pre_memory_color as the
+ * single-threaded renderer has them between primitives (the "view") and
+ * loads them before each 1/2-cycle primitive. Where that needs a framebuffer
+ * value (the pixel read last on a scanline, before the current primitive
+ * draws it), the worker owning the pixel's row reads it at the start of the
+ * primitive, because only that worker writes the row, and posts it to a
+ * mailbox; whoever needs it waits for it. Slots are indexed by scanline and
+ * by primitive sequence number modulo the command buffer size: a command
+ * batch holds at most that many primitives and all workers finish a batch
+ * (and fetch pending values) before the next one starts, so a slot is never
+ * reused while still needed.
+ */
+
+static STRICTINLINE uint32_t mc_slot(int line, uint32_t seq)
+{
+    return ((uint32_t)line % PARALLEL_MAILBOX_LINES) * PARALLEL_MAILBOX_SEQS + (seq % PARALLEL_MAILBOX_SEQS);
+}
+
+static STRICTINLINE uint32_t mc_pack(const struct color* c)
+{
+    return (uint32_t)(c->r & 0xff) << 24 | (uint32_t)(c->g & 0xff) << 16 | (uint32_t)(c->b & 0xff) << 8 | (uint32_t)(c->a & 0xff);
+}
+
+static STRICTINLINE struct color mc_unpack(uint32_t v)
+{
+    struct color c;
+    c.r = (v >> 24) & 0xff;
+    c.g = (v >> 16) & 0xff;
+    c.b = (v >> 8) & 0xff;
+    c.a = v & 0xff;
+    return c;
+}
+
+// result of an fbread that does not read memory: 4-bit framebuffers give
+// black, otherwise the colour channels keep their previous value
+static STRICTINLINE struct color mc_noread(struct rdp_state* wstate, struct color prev)
+{
+    if (wstate->fb_size == PIXEL_SIZE_4BIT)
+        prev.r = prev.g = prev.b = 0;
+    prev.a = 0xe0;
+    return prev;
+}
+
+static STRICTINLINE uint32_t mc_line_slot(struct rdp_state* wstate, int i)
+{
+    return mc_slot(i, wstate->mc_seq);
+}
+
+// post the framebuffer value at the pixel read last on scanline i, if this
+// worker owns that pixel's row
+static void mc_post(struct rdp_state* wstate, int i)
+{
+    uint32_t pixel = wstate->fb_width * i + wstate->span[i].lx;
+    uint32_t width = wstate->fb_width ? wstate->fb_width : 1;
+    uint32_t memcvg;
+
+    if ((pixel / width) % wstate->stride != wstate->offset)
+        return;
+
+    wstate->fbread2_ptr(wstate, pixel, &memcvg);
+    parallel_mailbox_post(mc_line_slot(wstate, i), wstate->mc_seq, mc_pack(&wstate->pre_memory_color));
+}
+
+// complete the view with the value the previous primitive left pending
+static void mc_resolve(struct rdp_state* wstate)
+{
+    struct color c;
+
+    if (!wstate->mc_pending)
+        return;
+
+    c = mc_unpack(parallel_mailbox_wait(wstate->mc_pending_slot, wstate->mc_pending_seq));
+    if (wstate->mc_pending == 2)
+        wstate->mc_view_pre = c;
+    wstate->mc_view_mem = c;
+    wstate->mc_pending = 0;
+}
+
+// called by every worker before rendering a 1-cycle or 2-cycle primitive
+static void mc_prim_begin(struct rdp_state* wstate, int start, int end, int two_cycle)
+{
+    int i, last = -1;
+
+    if (++wstate->mc_seq == 0)
+        wstate->mc_seq = 1;
+
+    mc_resolve(wstate);
+
+    for (i = end; i >= start; i--) {
+        if (wstate->span[i].validline_all) {
+            last = i;
+            break;
+        }
+    }
+
+    wstate->mc_base_mem = wstate->mc_view_mem;
+    wstate->mc_base_pre = wstate->mc_view_pre;
+    wstate->mc_read_mem = wstate->other_modes.image_read_en && wstate->fb_size != PIXEL_SIZE_4BIT;
+
+    if (last >= 0 && wstate->mc_read_mem) {
+        // 2-cycle: every span hands over to the next one; 1-cycle: only the
+        // last span matters, for the view after the primitive
+        if (two_cycle) {
+            for (i = start; i <= last; i++)
+                if (wstate->span[i].validline_all)
+                    mc_post(wstate, i);
+        } else {
+            mc_post(wstate, last);
+        }
+    }
+
+    // registers as the single-threaded renderer has them now
+    wstate->memory_color = wstate->mc_view_mem;
+    wstate->pre_memory_color = wstate->mc_view_pre;
+
+    // view after this primitive
+    if (last < 0)
+        return;
+
+    if (wstate->mc_read_mem) {
+        wstate->mc_pending = two_cycle ? 2 : 1;
+        wstate->mc_pending_slot = mc_line_slot(wstate, last);
+        wstate->mc_pending_seq = wstate->mc_seq;
+    } else if (two_cycle) {
+        wstate->mc_view_pre = mc_noread(wstate, wstate->mc_view_pre);
+        wstate->mc_view_mem = wstate->mc_view_pre;
+    } else {
+        wstate->mc_view_mem = mc_noread(wstate, wstate->mc_view_mem);
+    }
+}
+
+// called before the first pixel of span i of a 2-cycle primitive
+static void mc_span_begin(struct rdp_state* wstate, int start, int i)
+{
+    int k;
+
+    for (k = i - 1; k >= start; k--) {
+        if (wstate->span[k].validline_all) {
+            if (wstate->mc_read_mem)
+                wstate->memory_color = mc_unpack(parallel_mailbox_wait(mc_line_slot(wstate, k), wstate->mc_seq));
+            else
+                wstate->memory_color = mc_noread(wstate, wstate->mc_base_pre);
+            return;
+        }
+    }
+
+    // first span of the primitive: what the previous primitive left
+    wstate->memory_color = wstate->mc_base_mem;
+}
+
+// called by every worker at the end of a command batch, before mailbox
+// slots can be reused
+void rdp_mc_batch_end(struct rdp_state* wstate)
+{
+    if (wstate->stride > 1)
+        mc_resolve(wstate);
+}
+
 static void render_spans_1cycle_complete(struct rdp_state* wstate, int start, int end, int tilenum, int flip)
 {
     int zb = wstate->zb_address >> 1;
@@ -974,6 +1151,9 @@ static void render_spans_2cycle_complete(struct rdp_state* wstate, int start, in
     {
         if (wstate->span[i].validline)
         {
+        if (wstate->stride > 1)
+            mc_span_begin(wstate, start, i);
+
 
         xstart = wstate->span[i].lx;
         xend = wstate->span[i].unscrx;
@@ -1242,6 +1422,9 @@ static void render_spans_2cycle_notexelnext(struct rdp_state* wstate, int start,
     {
         if (wstate->span[i].validline)
         {
+        if (wstate->stride > 1)
+            mc_span_begin(wstate, start, i);
+
 
         xstart = wstate->span[i].lx;
         xend = wstate->span[i].unscrx;
@@ -1466,6 +1649,9 @@ static void render_spans_2cycle_notexel1(struct rdp_state* wstate, int start, in
     {
         if (wstate->span[i].validline)
         {
+        if (wstate->stride > 1)
+            mc_span_begin(wstate, start, i);
+
 
         xstart = wstate->span[i].lx;
         xend = wstate->span[i].unscrx;
@@ -1679,6 +1865,9 @@ static void render_spans_2cycle_notex(struct rdp_state* wstate, int start, int e
     {
         if (wstate->span[i].validline)
         {
+        if (wstate->stride > 1)
+            mc_span_begin(wstate, start, i);
+
 
         xstart = wstate->span[i].lx;
         xend = wstate->span[i].unscrx;
@@ -2293,7 +2482,10 @@ static void edgewalker_for_prims(struct rdp_state* wstate, int32_t* ewdata)
     if ((yl >> 2) > (ylfar >> 2))
         ylfar += 4;
     else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < 1023)
+    {
         wstate->span[(yllimit >> 2) + 1].validline = 0;
+        wstate->span[(yllimit >> 2) + 1].validline_all = 0;
+    }
 
 
     if (yh & 0x2000)
@@ -2401,6 +2593,8 @@ static void edgewalker_for_prims(struct rdp_state* wstate, int32_t* ewdata)
                     if ((wstate->span[j].lx - wstate->span[j].rx) >= oldhb_diff)
                         wstate->last_overwriting_scanline = j;
 
+                wstate->span[j].validline_all = wstate->span[j].validline;
+
                 // skip line if not assigned to this worker
                 wstate->span[j].validline &= (!wstate->stride || j % wstate->stride == wstate->offset);
             }
@@ -2494,6 +2688,8 @@ static void edgewalker_for_prims(struct rdp_state* wstate, int32_t* ewdata)
                     if ((wstate->span[j].rx - wstate->span[j].lx) >= oldhb_diff)
                         wstate->last_overwriting_scanline = j;
 
+                wstate->span[j].validline_all = wstate->span[j].validline;
+
                 // skip line if not assigned to this worker
                 wstate->span[j].validline &= (!wstate->stride || j % wstate->stride == wstate->offset);
             }
@@ -2513,6 +2709,11 @@ static void edgewalker_for_prims(struct rdp_state* wstate, int32_t* ewdata)
 
 
 
+
+    int mc_active = wstate->stride > 1 &&
+        (wstate->other_modes.cycle_type == CYCLE_TYPE_1 || wstate->other_modes.cycle_type == CYCLE_TYPE_2);
+    if (mc_active)
+        mc_prim_begin(wstate, yhlimit >> 2, yllimit >> 2, wstate->other_modes.cycle_type == CYCLE_TYPE_2);
 
     switch(wstate->other_modes.cycle_type)
     {

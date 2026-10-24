@@ -115,6 +115,11 @@ static STRICTINLINE uint32_t irand(uint32_t* state)
 #include "n64video/rdp.c"
 #include "n64video/vi.c"
 
+// a batch must not hold more primitives than the mailbox has slots per line
+#if CMD_BUFFER_SIZE > PARALLEL_MAILBOX_SEQS
+#error CMD_BUFFER_SIZE must not exceed PARALLEL_MAILBOX_SEQS
+#endif
+
 static uint32_t rdp_cmd_buf[CMD_BUFFER_SIZE][CMD_MAX_INTS];
 static uint32_t rdp_cmd_buf_pos;
 
@@ -132,6 +137,9 @@ static void cmd_run_buffered(uint32_t worker_id)
     for (pos = 0; pos < rdp_cmd_buf_pos; pos++) {
         rdp_cmd(&state[worker_id], rdp_cmd_buf[pos]);
     }
+
+    // mailbox slots may be reused by the next batch
+    rdp_mc_batch_end(&state[worker_id]);
 }
 
 static void cmd_flush(void)
@@ -168,6 +176,9 @@ static void n64video_init_parallel(uint32_t worker_id)
 
     wstate->stride = parallel_num_workers();
     wstate->offset = worker_id;
+    wstate->mc_view_mem = wstate->memory_color;
+    wstate->mc_view_pre = wstate->pre_memory_color;
+    wstate->mc_pending = 0;
     wstate->rseed = wstate->vi_rseed = 3 + worker_id * 13;
 }
 

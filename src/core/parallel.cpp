@@ -5,6 +5,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -203,6 +204,9 @@ public:
 // C interface for the Parallel class
 static std::shared_ptr<Parallel> parallel;
 
+// mailbox slots: tag (seq) in the upper 32 bits, value in the lower 32 bits
+static std::unique_ptr<std::atomic<std::uint64_t>[]> mailbox;
+
 void parallel_init(uint32_t num, bool busy)
 {
     if (busy) {
@@ -211,7 +215,27 @@ void parallel_init(uint32_t num, bool busy)
         parallel = std::make_unique<Parallel>(num);
     }
 
+    mailbox.reset(new std::atomic<std::uint64_t>[PARALLEL_MAILBOX_LINES * PARALLEL_MAILBOX_SEQS]());
+
     parallel->begin();
+}
+
+void parallel_mailbox_post(uint32_t slot, uint32_t seq, uint32_t value)
+{
+    mailbox[slot].store(static_cast<std::uint64_t>(seq) << 32 | value, std::memory_order_release);
+}
+
+uint32_t parallel_mailbox_wait(uint32_t slot, uint32_t seq)
+{
+    for (std::uint32_t spins = 0;; spins++) {
+        std::uint64_t v = mailbox[slot].load(std::memory_order_acquire);
+        if (static_cast<std::uint32_t>(v >> 32) == seq) {
+            return static_cast<std::uint32_t>(v);
+        }
+        if (spins >= 64) {
+            std::this_thread::yield();
+        }
+    }
 }
 
 void parallel_run(void task(uint32_t))
@@ -227,4 +251,5 @@ uint32_t parallel_num_workers()
 void parallel_close()
 {
     parallel.reset();
+    mailbox.reset();
 }

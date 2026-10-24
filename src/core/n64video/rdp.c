@@ -160,6 +160,7 @@ struct span
     int lx, rx;
     int unscrx;
     int validline;
+    int validline_all; // validline before the per-worker scanline filter
     int32_t r, g, b, a, s, t, w, z;
     int32_t majorx[4];
     int32_t minorx[4];
@@ -191,6 +192,18 @@ struct rdp_state
 {
     uint32_t stride;
     uint32_t offset;
+
+    // parallel mode: memory colour hand-over between scanlines rendered by
+    // different workers (see rasterizer.c)
+    uint32_t mc_seq;            // sequence number of the current 1/2-cycle primitive
+    struct color mc_view_mem;   // memory_color and pre_memory_color as the
+    struct color mc_view_pre;   // single-threaded renderer has them now
+    int mc_pending;             // view still needs a mailbox value (1/2: cycle type)
+    uint32_t mc_pending_slot;
+    uint32_t mc_pending_seq;
+    int mc_read_mem;            // current primitive reads the framebuffer
+    struct color mc_base_mem;   // memory_color and pre_memory_color before
+    struct color mc_base_pre;   // the current primitive
 
     int blshifta;
     int blshiftb;
